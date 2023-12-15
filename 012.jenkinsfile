@@ -1,0 +1,62 @@
+pipeline {
+    agent {
+        label 'master'
+    }
+    options {
+        buildDiscarder(logRotator(numToKeepStr: '7'))
+        // skipDefaultCheckout(true)
+        disableConcurrentBuilds()
+        timeout (time: 1, unit: 'MINUTES')
+        timestamps()
+    }
+    parameters {
+        string(name: 'BRANCH_NAME', defaultValue: 'main', description: '')
+        string(name: 'USERNAME', defaultValue: '', description: 'Enter username')
+        string(name: 'PASSWORD', defaultValue: '', description: 'Enter password')
+        string(name: 'EMAIL', defaultValue: '', description: 'Enter email')
+        string(name: 'FIRSTNAME', defaultValue: '', description: 'Enter first name')
+        string(name: 'LASTNAME', defaultValue: '', description: 'Enter last name')
+        choice(
+            name: 'PACKAGES',
+            choices: ['', 'vim', 'wget', 'unzip', 'curl'],
+            description: ''
+        )
+        choice(
+            name: 'ACCOUNT_MANAGEMENT',
+            choices: ['', 'add_user', 'delete_user', 'lock_user', 'unlock_user'],
+            description: ''
+        )
+    }
+    stages {
+        stage ('Checkout') {
+            steps {
+                dir("${WORKSPACE}/code") {
+                    checkout([
+                        $class: 'GitSCM',
+                        branches: [[name: "*/${params.BRANCH_NAME}"]],
+                        doGenerateSubmoduleConfigurations: false,
+                        extensions: [[$class: 'LocalBranch']],
+                        submoduleCfg: [],
+                        userRemoteConfigs: [[
+                        url: 'https://github.com/devopstia/a1.git',
+                        credentialsId: 'github-auth'
+                        ]]
+                    ])
+                }
+            }
+        }
+        stage('run') {
+            steps {
+                script {
+                    dir("${WORKSPACE}/code/jenkins/scripts") {
+                        sh """
+                            ls -l
+                            sudo chmod +x user-management-packages.sh
+                            sudo bash user-management-packages.sh ${params.PACKAGES} ${params.USERNAME} ${params.PASSWORD} ${params.EMAIL} ${params.FIRSTNAME} ${params.LASTNAME} ${params.ACCOUNT_MANAGEMENT}
+                        """
+                    }
+                }
+            }
+        }
+    }
+}
