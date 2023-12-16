@@ -1,0 +1,50 @@
+YOUR_NAME="Cyprien Carlos Temateu"
+YOUR_ADDRESS="720 Brockwell Bend"
+CANIDATE_CITY_STATE_ZIP_CODE="Forney, TX 75126"
+YOUR_EMAIL_ADDRESS="cctemateu@gmail.com"
+YOUR_PHONE_NUMBER="832 416 6594"
+PREVIOUS_COMPANY="EK-TECH"
+JOB_TITLE="DevOps Engineer"
+DATE="10/16/2023"
+
+EMPLOYER_NAME="Manager"
+COMPANY_NAME="Wells Fargo"
+COMPANY_ADDRESS=""
+EMPLOYER_CITY_STATE_ZIP_CODE=""
+SKILLS_REQUIRED="Git, Jenkins, Docker, Terraform, Ansible, and AWS cloud platform"
+YOUR_EXPERIENCE="version control, CI/CD pipelines, infrastructure management, and containerization"
+
+cat <<EOF
+$YOUR_NAME
+$YOUR_ADDRESS
+$CANIDATE_CITY_STATE_ZIP_CODE
+$YOUR_EMAIL_ADDRESS
+$YOUR_PHONE_NUMBER
+$PREVIOUS_COMPANY
+$JOB_TITLE
+$DATE
+
+$EMPLOYER_NAME
+$COMPANY_NAME
+$COMPANY_ADDRESS
+$EMPLOYER_CITY_STATE_ZIP_CODE
+
+Dear $EMPLOYER_NAME,
+
+I am writing to express my interest in the position of $JOB_TITLE at $COMPANY_NAME, as advertised. With over four years of progressive experience in the DevOps field, I am excited to bring my expertise to your team and contribute to your company’s success.
+
+During my tenure as a DevOps Engineer at $PREVIOUS_COMPANY, I have successfully optimized CI/CD pipelines, resulting in a remarkable 25% reduction in deployment time. I have demonstrated proficiency in automation, continuous integration, and containerization, which led to a 50% reduction in manual tasks and a significant boost in system reliability.
+
+I have a strong foundation in infrastructure management, overseeing virtual networks, instances, databases, and storage solutions. My work has resulted in an impressive 99.9% uptime for cloud environments. Additionally, I have a keen eye for security and have implemented best practices and compliance standards in AWS environments.
+
+My technical skills include expertise in $SKILLS_REQUIRED.
+In addition to my technical acumen, I have honed my communication and interpersonal skills while serving as a Sales Manager at Envasadora Sarl. This experience has allowed me to develop a strong ability to build and nurture solid business relationships, an asset that I believe will be valuable in collaborating effectively with diverse teams at $COMPANY_NAME.
+
+I am confident that my comprehensive skill set, including proficiency in $YOUR_EXPERIENCE, aligns perfectly with the requirements for the $JOB_TITLE role at $COMPANY_NAME. I am excited about the opportunity to contribute my expertise and collaborate with your talented team to drive innovation and success.
+
+Thank you for considering my application. I am eager to discuss my qualifications further and how my contributions can benefit $COMPANY_NAME. Please find my attached resume for additional details on my experience.
+
+Sincerely,
+
+$YOUR_NAME
+EOF
