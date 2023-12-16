@@ -11,8 +11,8 @@ EMPLOYER_NAME="Manager"
 COMPANY_NAME="Wells Fargo"
 COMPANY_ADDRESS=""
 EMPLOYER_CITY_STATE_ZIP_CODE=""
-SKILLS_REQUIRED="Git, Jenkins, Docker, Terraform, Ansible, and AWS cloud platform"
-YOUR_EXPERIENCE="version control, CI/CD pipelines, infrastructure management, and containerization"
+SKILLS_REQUIRED="Git, Jenkins, Docker, Terraform, Ansible, and AWS cloud platform" ### you can always replace these with the skills required from the job description.
+YOUR_EXPERIENCE="version control, CI/CD pipelines, infrastructure management, and containerization" ### you can always replace this according to the job description and your skills set.
 
 cat <<EOF
 $YOUR_NAME
