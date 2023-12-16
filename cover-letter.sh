@@ -1,16 +1,18 @@
-YOUR_NAME="Temateu"
+YOUR_NAME=""
 YOUR_ADDRESS=""
-CANIDATE_CITY_STATE_ZIP_CODE="5887"
-YOUR_EMAIL_ADDRESS="cctemateu@gmail.com"
-YOUR_PHONE_NUMBER="585 785 47854"
-PREVIOUS_COMPANY="Bank America"
-JOB_TITLE="DevOps Engineer"
-DATE="10/16/2023"
+CANIDATE_CITY_STATE_ZIP_CODE=""
+YOUR_EMAIL_ADDRESS=""
+YOUR_PHONE_NUMBER=""
+PREVIOUS_COMPANY=""
+JOB_TITLE=""
+DATE=""
 
 EMPLOYER_NAME="Manager"
-COMPANY_NAME="DEL"
-COMPANY_ADDRESS="2554 Tombal Dr"
-EMPLOYER_CITY_STATE_ZIP_CODE="25245"
+COMPANY_NAME=""
+COMPANY_ADDRESS=""
+EMPLOYER_CITY_STATE_ZIP_CODE=""
+SKILLS_REQUIRED="Git, Jenkins, Docker, Terraform, Ansible, and AWS cloud platform" # you can always replace these with the skills required from the job description.
+YOUR_EXPERIENCE="version control, CI/CD pipelines, infrastructure management, and containerization" # you can always replace this according to the job description and your skills set.
 
 cat <<EOF
 $YOUR_NAME
@@ -50,32 +52,3 @@ Sincerely,
 
 $YOUR_NAME
 EOF
-
-
-SCRIPT_NAME=$0
-A=$1
-B=$2
-C=$3
-D=$4
-F=$5
-
-A1=$6
-B2=$7
-C3=$8
-D4=$9
-F5=${10}
-Z6=${11}
-
-echo "You most add execute permission before running $SCRIPT_NAME"
-echo $A
-echo $B
-echo $C
-echo $D
-echo $F
-
-echo $A1
-echo $B2
-echo $C3
-echo $D4
-echo $F5
-echo $Z6
