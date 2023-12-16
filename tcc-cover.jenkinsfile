@@ -1,0 +1,73 @@
+pipeline {
+    agent any
+
+    parameters {
+        string(name: 'YOUR_NAME', defaultValue: 'Cyprien Carlos Temateu', description: 'Your full name')
+        string(name: 'YOUR_ADDRESS', defaultValue: '720 Brockwell Bend', description: 'Your address')
+        string(name: 'CANDIDATE_CITY_STATE_ZIP_CODE', defaultValue: 'Forney, TX 75126', description: 'Your city, state, and ZIP code')
+        string(name: 'YOUR_EMAIL_ADDRESS', defaultValue: 'cctemateu@gmail.com', description: 'Your email address')
+        string(name: 'YOUR_PHONE_NUMBER', defaultValue: '832 416 6594', description: 'Your phone number')
+        string(name: 'PREVIOUS_COMPANY', defaultValue: 'EK-TECH', description: 'Your previous company')
+        string(name: 'JOB_TITLE', defaultValue: 'DevOps Engineer', description: 'Your job title')
+        string(name: 'DATE', defaultValue: '10/16/2023', description: 'Current date')
+        string(name: 'EMPLOYER_NAME', defaultValue: 'Manager', description: 'Employer\'s name')
+        string(name: 'COMPANY_NAME', defaultValue: 'Wells Fargo', description: 'Company name')
+        string(name: 'COMPANY_ADDRESS', defaultValue: '', description: 'Company address')
+        string(name: 'EMPLOYER_CITY_STATE_ZIP_CODE', defaultValue: '', description: 'Employer\'s city, state, and ZIP code')
+        string(name: 'SKILLS_REQUIRED', defaultValue: 'Git, Jenkins, Docker, Terraform, Ansible, and AWS cloud platform', description: 'Skills required for the job')
+        string(name: 'YOUR_EXPERIENCE', defaultValue: 'version control, CI/CD pipelines, infrastructure management, and containerization', description: 'Your relevant experience')
+    }
+
+    stages {
+        stage('Checkout from Git') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Build Cover Letter') {
+            steps {
+                script {
+                    def coverLetter = """
+                    ${params.YOUR_NAME}
+                    ${params.YOUR_ADDRESS}
+                    ${params.CANDIDATE_CITY_STATE_ZIP_CODE}
+                    ${params.YOUR_EMAIL_ADDRESS}
+                    ${params.YOUR_PHONE_NUMBER}
+                    ${params.PREVIOUS_COMPANY}
+                    ${params.JOB_TITLE}
+                    ${params.DATE}
+
+                    ${params.EMPLOYER_NAME}
+                    ${params.COMPANY_NAME}
+                    ${params.COMPANY_ADDRESS}
+                    ${params.EMPLOYER_CITY_STATE_ZIP_CODE}
+
+                    Dear ${params.EMPLOYER_NAME},
+
+                    I am writing to express my interest in the position of ${params.JOB_TITLE} at ${params.COMPANY_NAME}, as advertised. With over four years of progressive experience in the DevOps field, I am excited to bring my expertise to your team and contribute to your company’s success.
+
+                    During my tenure as a DevOps Engineer at ${params.PREVIOUS_COMPANY}, I have successfully optimized CI/CD pipelines, resulting in a remarkable 25% reduction in deployment time. I have demonstrated proficiency in automation, continuous integration, and containerization, which led to a 50% reduction in manual tasks and a significant boost in system reliability.
+
+                    I have a strong foundation in infrastructure management, overseeing virtual networks, instances, databases, and storage solutions. My work has resulted in an impressive 99.9% uptime for cloud environments. Additionally, I have a keen eye for security and have implemented best practices and compliance standards in AWS environments.
+
+                    My technical skills include expertise in ${params.SKILLS_REQUIRED}.
+                    In addition to my technical acumen, I have honed my communication and interpersonal skills while serving as a Sales Manager at Envasadora Sarl. This experience has allowed me to develop a strong ability to build and nurture solid business relationships, an asset that I believe will be valuable in collaborating effectively with diverse teams at ${params.COMPANY_NAME}.
+
+                    I am confident that my comprehensive skill set, including proficiency in ${params.YOUR_EXPERIENCE}, aligns perfectly with the requirements for the ${params.JOB_TITLE} role at ${params.COMPANY_NAME}. I am excited about the opportunity to contribute my expertise and collaborate with your talented team to drive innovation and success.
+
+                    Thank you for considering my application. I am eager to discuss my qualifications further and how my contributions can benefit ${params.COMPANY_NAME}. Please find my attached resume for additional details on my experience.
+
+                    Sincerely,
+                    ${params.YOUR_NAME}
+                    """
+
+                    echo "Cover Letter:"
+                    echo "-----------------------------"
+                    echo "${coverLetter}"
+                    echo "-----------------------------"
+                }
+            }
+        }
+    }
+}
