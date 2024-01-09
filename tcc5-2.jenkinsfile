@@ -243,7 +243,7 @@ def add_user_to_group() {
 }
 def remove_user_from_group() {
     script{
-        if (params.ACCOUNT_MANAGEMENT == 'remve_user_from_group')
+        if (params.ACCOUNT_MANAGEMENT == 'remove_user_from_group')
         sh """
             if grep -q "^${params.GROUP_NAME}:" /etc/group; then
             sudo deluser ${params.USERNAME} ${params.GROUP_NAME}
