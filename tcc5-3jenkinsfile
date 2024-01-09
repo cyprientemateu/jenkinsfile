@@ -249,6 +249,7 @@ def remove_user_from_group() {
             sudo deluser ${params.USERNAME} ${params.GROUP_NAME}
             sudo echo "User ${params.USERNAME} has been removed from group ${params.GROUP_NAME}."
             sudo cat /etc/group
+            sudo tail -5 /etc/group
             else
             echo "Group ${params.GROUP_NAME} does not exist."
             fi
