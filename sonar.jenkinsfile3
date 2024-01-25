@@ -1,0 +1,191 @@
+pipeline {
+    agent {
+        label ''
+    }
+    options {
+        buildDiscarder(logRotator(numToKeepStr: '7'))
+        skipDefaultCheckout(true)
+        disableConcurrentBuilds()
+        timeout (time: 5, unit: 'MINUTES')
+        timestamps()
+    }
+    parameters {
+        string(name: 'BRANCH_NAME', defaultValue: 'main', description: '')
+        string(name: 'SONAR_VERSION', defaultValue: '5.0.1.3006', description: '')
+    }
+    stages {
+        stage ('Checkout') {
+            steps {
+                dir("${WORKSPACE}/tcc-weather-app") {
+                    checkout([
+                        $class: 'GitSCM',
+                        branches: [[name: "*/${env.BRANCH_NAME}"]],
+                        doGenerateSubmoduleConfigurations: false,
+                        extensions: [[$class: 'LocalBranch']],
+                        submoduleCfg: [],
+                        userRemoteConfigs: [[
+                            url: 'https://github.com/cyprientemateu/jenkins-test.git',
+                            credentialsId: 'github-auth'
+                        ]]
+                    ])
+                }
+            }
+        }
+        stage ('Install SonarQube') {
+            steps {
+                script {
+                    sh """
+                        sudo apt update -y
+                        sudo apt install nodejs npm wget unzip -y              
+                        wget -q https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-${params.SONAR_VERSION}-linux.zip
+                        unzip sonar-scanner-cli-${params.SONAR_VERSION}-linux.zip
+                        sudo mv sonar-scanner-${params.SONAR_VERSION}-linux sonar-scanner
+                        sudo rm -rf  /var/opt/sonar-scanner || true
+                        sudo mv sonar-scanner /var/opt/
+                        sudo rm -rf /usr/local/bin/sonar-scanner || true
+                        sudo ln -s /var/opt/sonar-scanner/bin/sonar-scanner /usr/local/bin/ || true
+                        sonar-scanner -v
+                    """
+                }
+            }
+        }
+        stage('Remove Existing sonar-project.properties') {
+            steps {
+                dir("${WORKSPACE}/tcc-weather-app/code") {
+                    script {
+                        // Check if sonar-project.properties exists and remove it if found
+                        if (fileExists('sonar-project.properties')) {
+                            sh 'rm sonar-project.properties'
+                        }
+                    }
+                }
+            }
+        }
+        stage('Create sonar-project.properties') {
+            steps {
+                dir("${WORKSPACE}/tcc-weather-app/code") {
+                    script {
+                        // Define the content of sonar-project.properties
+                        def sonarProjectPropertiesContent = """
+                            sonar.host.url=https://sonarqube.ektechsoftwaresolution.com/
+                            sonar.projectKey=tcc-sonar-weather-app-project
+                            sonar.projectName=tcc-sonar-weather-app-project
+                            sonar.projectVersion=1.0
+                            sonar.sources=.
+                            qualitygate.wait=true 
+                        """
+
+                        // Create the sonar-project.properties file
+                        writeFile file: 'sonar-project.properties', text: sonarProjectPropertiesContent
+                    }
+                }
+            }
+        }
+        stage('Open sonar-project.properties') {
+            steps {
+                dir("${WORKSPACE}/tcc-weather-app/code") {
+                    script {
+                        // Use 'cat' command to display the content of sonar-project.properties
+                        sh 'cat sonar-project.properties'
+                    }
+                }
+            }
+        }
+        stage('SonarQube Analysis') {
+            steps {
+                dir("${WORKSPACE}/tcc-weather-app/code") {
+                    script {
+                        withSonarQubeEnv('SonarScanner') {
+                            sh "sonar-scanner"
+                        }
+                    }
+                }
+            }
+        }
+        stage('Build Docker Images') {
+            steps {
+                script {
+                    // List of services
+                    def services = ['auth', 'db', 'redis', 'ui', 'weather']
+
+                    // Iterate over services and build Docker images
+                    for (service in services) {
+                        // Build Docker image for the current service
+                        buildDockerImage(service)
+                    }
+                }
+            }
+        }
+        // stage('Build') {
+        //     steps {
+        //         dir("${WORKSPACE}/tcc-weather-app") {
+        //             script {
+        //                 // Build the Docker image
+        //                 sh 'sudo docker build -t tcc-app -f application/weather-app/code/weather . && sudo docker images'
+        //             }
+        //         }
+        //     }
+        // }
+
+        // New stage: Deploy
+        // stage('Deploy') {
+        //     steps {
+        //         dir("${WORKSPACE}/tcc-weather-app") {
+        //             script {
+        //                 // Deploy the Docker image to a registry or run it on a server
+        //                 sh 'docker push your-docker-image-name:latest'
+
+        //                 // Example: Deploy to a Docker Swarm
+        //                 sh 'docker stack deploy -c docker-compose.yml your-stack-name'
+        //             }
+        //         }
+        //     }
+        // }
+
+    }
+    post {
+        
+        success {
+            slackSend color: '#2EB67D',
+            channel: 'tcc-lab',  
+            message: "*tcc-weather-app Project Build Status*" +
+            "\n Project Name: tcc-weather-app" +
+            "\n Job Name: ${env.JOB_NAME}" +
+            "\n Build number: ${currentBuild.displayName}" +
+            "\n Build Status : *SUCCESS*" +
+            "\n Build url : ${env.BUILD_URL}"
+        }
+        failure {
+            slackSend color: '#E01E5A', 
+            channel: 'tcc-lab',  
+            message: "*tcc-weather-app Project Build Status*" +
+            "\n Project Name: tcc-weather-app" +
+            "\n Job Name: ${env.JOB_NAME}" +
+            "\n Build number: ${currentBuild.displayName}" +
+            "\n Build Status : *FAILED*" +
+            "\n Action : Please check the console output to fix this job IMMEDIATELY" +
+            "\n Build url : ${env.BUILD_URL}"
+        }
+        unstable {
+            slackSend color: '#ECB22E',
+            channel: 'tcc-lab', 
+            message: "*tcc-weather-app Project Build Status*" +
+            "\n Project Name: tcc-weather-app" +
+            "\n Job Name: ${env.JOB_NAME}" +
+            "\n Build number: ${currentBuild.displayName}" +
+            "\n Build Status : *UNSTABLE*" +
+            "\n Action : Please check the console output to fix this job IMMEDIATELY" +
+            "\n Build url : ${env.BUILD_URL}"
+        }   
+    }
+}
+// Function to build Docker image for a service
+def buildDockerImage(serviceName) {
+    script {
+        dir("${WORKSPACE}/tcc-weather-app/code/${serviceName}") {
+            // Adjust the Docker build command based on your Dockerfile location and image name
+            sh "sudo docker-compose build -t cyprientemateu/${serviceName}:latest ."
+            sh "sudo docker images"
+        }
+    }
+}
