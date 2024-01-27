@@ -1,0 +1,120 @@
+pipeline {
+    agent {
+        label ''
+    }
+    triggers {
+        githubPush()
+    }
+    options {
+        buildDiscarder(logRotator(numToKeepStr: '7'))
+        skipDefaultCheckout(true)
+        disableConcurrentBuilds()
+        timeout(time: 5, unit: 'MINUTES')
+        timestamps()
+    }
+    parameters {
+        string(name: 'BRANCH_NAME', defaultValue: 'main', description: '')
+        string(name: 'SONAR_VERSION', defaultValue: '5.0.1.3006', description: '')
+    }
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: "*/${env.BRANCH_NAME}"]],
+                    doGenerateSubmoduleConfigurations: false,
+                    extensions: [[$class: 'LocalBranch']],
+                    submoduleCfg: [],
+                    userRemoteConfigs: [[
+                        url: 'https://github.com/cyprientemateu/jenkins-test.git',
+                        credentialsId: 'github-auth'
+                    ]]
+                ])
+            }
+        }
+        stage('Remove Existing sonar-project.properties') {
+            steps {
+                script {
+                    // Check if sonar-project.properties exists and remove it if found
+                    sh "rm -f ${WORKSPACE}/tcc-weather-app/code/sonar-project.properties"
+                }
+            }
+        }
+        stage('Create sonar-project.properties') {
+            steps {
+                script {
+                    // Define the content of sonar-project.properties
+                    def sonarProjectPropertiesContent = """
+                        sonar.host.url=https://sonarqube.ektechsoftwaresolution.com/
+                        sonar.projectKey=tcc-sonar-weather-app-project
+                        sonar.projectName=tcc-sonar-weather-app-project
+                        sonar.projectVersion=1.0
+                        sonar.sources=.
+                        qualitygate.wait=true 
+                    """
+
+                    // Create the sonar-project.properties file
+                    writeFile file: "${WORKSPACE}/tcc-weather-app/code/sonar-project.properties", text: sonarProjectPropertiesContent
+                }
+            }
+        }
+        stage('Open sonar-project.properties') {
+            steps {
+                dir("${WORKSPACE}/tcc-weather-app/code") {
+                    script {
+                        // Use 'cat' command to display the content of sonar-project.properties
+                        sh 'cat sonar-project.properties'
+                    }
+                }
+            }
+        }
+        stage('SonarQube Analysis') {
+            steps {
+                dir("${WORKSPACE}/tcc-weather-app/code") {
+                    script {
+                        withSonarQubeEnv('SonarScanner') {
+                            sh "sonar-scanner"
+                        }
+                    }
+                }
+            }
+        }
+        stage('Build image') {
+            steps {
+                script {
+                    echo 'Starting to build docker images'
+                    sh "docker rmi -f \$(docker images -q)"
+                    def auth = docker.build("my-auth-image:${env.BUILD_ID}", "-f ${WORKSPACE}/auth/Dockerfile ${WORKSPACE}/auth")
+                    def db = docker.build("my-db-image:${env.BUILD_ID}", "-f ${WORKSPACE}/db/Dockerfile ${WORKSPACE}/db") 
+                    def redis = docker.build("my-redis-image:${env.BUILD_ID}", "-f ${WORKSPACE}/redis/Dockerfile ${WORKSPACE}/redis")
+                    def ui = docker.build("my-ui-image:${env.BUILD_ID}", "-f ${WORKSPACE}/ui/Dockerfile ${WORKSPACE}/ui")
+                    def weather = docker.build("my-weather-image:${env.BUILD_ID}", "-f ${WORKSPACE}/weatherDockerfile ${WORKSPACE}")
+                    sh 'docker images' 
+                }
+            }
+        }
+    }
+    post {
+        success {
+            slackSend color: '#2EB67D',
+            channel: 'tcc-lab',  
+            message: "*tcc-weather-app Project Build Status*" +
+            "\n Project Name: tcc-weather-app" +
+            "\n Job Name: ${env.JOB_NAME}" +
+            "\n Build number: ${currentBuild.displayName}" +
+            "\n Build Status : *SUCCESS*" +
+            "\n Build url : ${env.BUILD_URL}"
+        }
+        failure {
+            slackSend color: '#E01E5A', 
+            channel: 'tcc-lab',  
+            message: "*tcc-weather-app Project Build Status*" +
+            "\n Project Name: tcc-weather-app" +
+            "\n Job Name: ${env.JOB_NAME}" +
+            "\n Build number: ${currentBuild.displayName}" +
+            "\n Build Status : *FAILED*" +
+            "\n Action : Please check the console output to fix this job IMMEDIATELY" +
+            "\n Build url : ${env.BUILD_URL}"
+        }
+    }
+}
