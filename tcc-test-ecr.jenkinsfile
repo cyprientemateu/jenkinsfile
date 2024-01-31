@@ -1,0 +1,387 @@
+pipeline {
+    agent any
+
+    // triggers {
+    //     githubPush()
+    // }
+    environment {
+        ECR_REPOSITORY_URI = "${params.AWS_ACCOUNT_NUMBER}.dkr.ecr.${params.AWS_REGION}.amazonaws.com"
+        UI_ECR_IMAGE_REPOSITORY_NAME = "sixfure-ui"
+        AUTH_ECR_REPOSITORY_NAME = "sixfure-auth"
+        WEATHER_ECR_REPOSITORY_NAME = "sixfure-weather"
+        REDIS_ECR_REPOSITORY_NAME = "sixfure-redis"
+        DB_ECR_REPOSITORY_NAME = "sixfure-db"
+    }
+    options {
+        buildDiscarder(logRotator(numToKeepStr: '2'))
+        skipDefaultCheckout(true)
+        disableConcurrentBuilds()
+        timeout (time: 30, unit: 'MINUTES')
+        timestamps()
+    }
+    parameters {
+        string (name: 'BRANCH_NAME', defaultValue: 'main', description: '')
+        string (name: 'UI_IMAGE_TAG', defaultValue: 'v1.0.0', description: '')
+        string (name: 'AUTH_IMAGE_TAG', defaultValue: 'v1.0.0', description: '')
+        string (name: 'WEATHER_IMAGE_TAG', defaultValue: 'v1.0.0', description: '')
+        string (name: 'REDIS_IMAGE_TAG', defaultValue: 'v1.0.0', description: '')
+        string (name: 'DB_IMAGE_TAG', defaultValue: 'v1.0.0', description: '')
+        string(name: 'AWS_ACCOUNT_NUMBER', defaultValue: '734028878759', description: '')
+        string(name: 'AWS_REGION', defaultValue: 'us-east-1', description: '')
+    }
+    stages {
+        // stage ('Sanity Check') {
+        //     steps {
+        //         script {
+        //            sanityChecks()
+        //         }
+        //     }
+        // }
+        stage ('Checkout') {
+            steps {
+                dir("${WORKSPACE}/tcc-weather-app") {
+                    checkout([
+                        $class: 'GitSCM',
+                        branches: [[name: "*/${params.BRANCH_NAME}"]],
+                        doGenerateSubmoduleConfigurations: false,
+                        extensions: [[$class: 'LocalBranch']],
+                        submoduleCfg: [],
+                        userRemoteConfigs: [[
+                        url: 'https://github.com/cyprientemateu/jenkins-test.git',
+                        credentialsId: 'github-auth'
+                        ]]
+                    ])
+                }
+            }
+        }
+        stage ('Building the UI') {
+            steps {
+                dir("${WORKSPACE}/tcc-weather-app/code/ui") {
+                    script {
+                        sh """
+                        sudo docker build -t ${env.ECR_REPOSITORY_URI}/${env.UI_ECR_IMAGE_REPOSITORY_NAME}:${params.UI_IMAGE_TAG} .
+                        sudo docker images
+                        """
+                    }
+                }
+            }
+        }
+        stage ('Building the AUTH') {
+            steps {
+                dir("${WORKSPACE}/tcc-weather-app/code/auth") {
+                    script {
+                        sh """
+                        sudo docker build -t ${env.ECR_REPOSITORY_URI}/${env.AUTH_ECR_REPOSITORY_NAME}:${params.AUTH_IMAGE_TAG} .
+                        sudo docker images
+                        """
+                    }
+                }
+            }
+        }
+        stage ('Building the WEATHER') {
+            steps {
+                dir("${WORKSPACE}/tcc-weather-app/code/weather") {
+                    script {
+                        sh """
+                        sudo docker build -t ${env.ECR_REPOSITORY_URI}/${env.WEATHER_ECR_REPOSITORY_NAME}:${params.WEATHER_IMAGE_TAG} .
+                        sudo docker images
+                        """
+                    }
+                }
+            }
+        }
+        stage ('Building the DB') {
+            steps {
+                dir("${WORKSPACE}/tcc-weather-app/code/db") {
+                    script {
+                        sh """
+                        sudo docker build -t ${env.ECR_REPOSITORY_URI}/${env.DB_ECR_REPOSITORY_NAME}:${params.DB_IMAGE_TAG} .
+                        sudo docker images
+                        """
+                    }
+                }
+            }
+        }
+        stage ('Building the Redis') {
+            steps {
+                dir("${WORKSPACE}/tcc-weather-app/code/redis") {
+                    script {
+                        sh """
+                        sudo docker build -t ${env.ECR_REPOSITORY_URI}/${env.REDIS_ECR_REPOSITORY_NAME}:${params.REDIS_IMAGE_TAG} .
+                        sudo docker images
+                        """
+                    }
+                }
+            }
+        }
+        stage('Getting AWS Credentials') {
+            steps {
+                script {
+                   def awsCredentialsId = 'carloscli'
+                   withCredentials([[
+                        $class: 'AmazonWebServicesCredentialsBinding',
+                        accessKeyVariable: 'AWS_ACCESS_KEY_ID',
+                        credentialsId: awsCredentialsId,
+                        secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
+                    ]]) {
+                        aws_credentials()
+
+                        sh """
+                            aws s3 ls
+                        """
+                   } 
+                }
+            }
+        }
+        stage('Check and Create ECR Repository') {
+            steps {
+                script {
+                    def uiRepoExists = sh(
+                        script: "aws ecr describe-repositories --repository-names ${env.UI_ECR_IMAGE_REPOSITORY_NAME} --region ${params.AWS_REGION} | grep ${env.UI_ECR_IMAGE_REPOSITORY_NAME}",
+                        returnStatus: true) == 0
+                     def authRepoExists = sh(
+                        script: "aws ecr describe-repositories --repository-names ${env.AUTH_ECR_REPOSITORY_NAME} --region ${params.AWS_REGION} | grep ${env.AUTH_ECR_REPOSITORY_NAME}",
+                        returnStatus: true) == 0
+                    def weatherRepoExists = sh(
+                        script: "aws ecr describe-repositories --repository-names ${env.WEATHER_ECR_REPOSITORY_NAME} --region ${params.AWS_REGION} | grep ${env.WEATHER_ECR_REPOSITORY_NAME}",
+                        returnStatus: true) == 0
+                    def redisRepoExists = sh(
+                        script: "aws ecr describe-repositories --repository-names ${env.REDIS_ECR_REPOSITORY_NAME} --region ${params.AWS_REGION} | grep ${env.REDIS_ECR_REPOSITORY_NAME}",
+                        returnStatus: true) == 0
+                    def dbRepoExists = sh(
+                        script: "aws ecr describe-repositories --repository-names ${env.DB_ECR_REPOSITORY_NAME} --region ${params.AWS_REGION} | grep ${env.DB_ECR_REPOSITORY_NAME}",
+                        returnStatus: true) == 0
+
+                    if (uiRepoExists) {
+                        echo "AWS ECR repository ${env.UI_ECR_IMAGE_REPOSITORY_NAME} already exists."
+                    } else {
+                        sh "aws ecr create-repository --repository-name ${env.UI_ECR_IMAGE_REPOSITORY_NAME} --region ${params.AWS_REGION}"
+                        echo "AWS ECR repository ${env.UI_ECR_IMAGE_REPOSITORY_NAME} was successfully created."
+                    }
+
+                    if (authRepoExists) {
+                        echo "AWS ECR repository ${env.AUTH_ECR_REPOSITORY_NAME} already exists."
+                    } else {
+                        sh "aws ecr create-repository --repository-name ${env.AUTH_ECR_REPOSITORY_NAME} --region ${params.AWS_REGION}"
+                        echo "AWS ECR repository ${env.AUTH_ECR_REPOSITORY_NAME} was successfully created."
+                    }
+
+                    if (weatherRepoExists) {
+                        echo "AWS ECR repository ${env.WEATHER_ECR_REPOSITORY_NAME} already exists."
+                    } else {
+                        sh "aws ecr create-repository --repository-name ${env.WEATHER_ECR_REPOSITORY_NAME} --region ${params.AWS_REGION}"
+                        echo "AWS ECR repository ${env.WEATHER_ECR_REPOSITORY_NAME} was successfully created."
+                    }
+
+                    if (redisRepoExists) {
+                        echo "AWS ECR repository ${env.REDIS_ECR_REPOSITORY_NAME} already exists."
+                    } else {
+                        sh "aws ecr create-repository --repository-name ${env.REDIS_ECR_REPOSITORY_NAME} --region ${params.AWS_REGION}"
+                        echo "AWS ECR repository ${env.REDIS_ECR_REPOSITORY_NAME} was successfully created."
+                    }
+
+                    if (dbRepoExists) {
+                        echo "AWS ECR repository ${env.DB_ECR_REPOSITORY_NAME} already exists."
+                    } else {
+                        sh "aws ecr create-repository --repository-name ${env.DB_ECR_REPOSITORY_NAME} --region ${params.AWS_REGION}"
+                        echo "AWS ECR repository ${env.DB_ECR_REPOSITORY_NAME} was successfully created."
+                    }
+                }
+            }
+        }
+        stage ('Pushing Images Into AWS ERC') {
+            steps {
+                script {
+                    // sh "aws ecr get-login-password --region ${env.AWS_REGION} | sudo docker login --username AWS --password-stdin ${env.AWS_ACCOUNT_ID}.dkr.ecr.${env.AWS_REGION}.amazonaws.com"
+                    
+                    sh """
+                        aws ecr get-login-password --region ${params.AWS_REGION} | sudo docker login --username AWS --password-stdin ${ECR_REPOSITORY_URI}
+                        sudo docker push ${env.ECR_REPOSITORY_URI}/${env.UI_ECR_IMAGE_REPOSITORY_NAME}:${params.UI_IMAGE_TAG}
+                        sudo docker push ${env.ECR_REPOSITORY_URI}/${env.AUTH_ECR_REPOSITORY_NAME}:${params.AUTH_IMAGE_TAG}
+                        sudo docker push ${env.ECR_REPOSITORY_URI}/${env.WEATHER_ECR_REPOSITORY_NAME}:${params.WEATHER_IMAGE_TAG}
+                        sudo docker push ${env.ECR_REPOSITORY_URI}/${env.REDIS_ECR_REPOSITORY_NAME}:${params.DB_IMAGE_TAG}
+			            sudo docker push ${env.ECR_REPOSITORY_URI}/${env.DB_ECR_REPOSITORY_NAME}:${params.REDIS_IMAGE_TAG}
+                    """ 
+                }
+            }
+        }
+        // stage ('Pushing UI Into AWS ERC') {
+        //     steps {
+        //         script {
+        //             sh """
+        //                 aws ecr get-login-password --region ${params.AWS_REGION} | sudo docker login --username AWS --password-stdin ${ECR_REPOSITORY_URI}
+        //                 sudo docker push ${env.ECR_REPOSITORY_URI}/${env.UI_ECR_IMAGE_REPOSITORY_NAME}:${params.UI_IMAGE_TAG}
+        //             """ 
+        //         }
+        //     }
+        // }
+        // stage ('Pushing AUTH Into AWS ERC') {
+        //     steps {
+        //         script {
+        //             sh """
+        //                 aws ecr get-login-password --region ${params.AWS_REGION} | sudo docker login --username AWS --password-stdin ${ECR_REPOSITORY_URI}
+        //                 sudo docker push ${env.ECR_REPOSITORY_URI}/${env.AUTH_ECR_REPOSITORY_NAME}:${params.AUTH_IMAGE_TAG}
+        //             """ 
+        //         }
+        //     }
+        // }
+        // stage ('Pushing Weather Into AWS ERC') {
+        //     steps {
+        //         script {
+        //             sh """
+        //                 aws ecr get-login-password --region ${params.AWS_REGION} | sudo docker login --username AWS --password-stdin ${ECR_REPOSITORY_URI}
+        //                 sudo docker push ${env.ECR_REPOSITORY_URI}/${env.WEATHER_ECR_REPOSITORY_NAME}:${params.WEATHER_IMAGE_TAG}
+        //             """ 
+        //         }
+        //     }
+        // }
+        // stage ('Pushing Redis Into AWS ERC') {
+        //     steps {
+        //         script {
+        //             sh """
+        //                 aws ecr get-login-password --region ${params.AWS_REGION} | sudo docker login --username AWS --password-stdin ${ECR_REPOSITORY_URI}
+        //                 sudo docker push ${env.ECR_REPOSITORY_URI}/${env.REDIS_ECR_REPOSITORY_NAME}:${params.DB_IMAGE_TAG}
+        //             """ 
+        //         }
+        //     }
+        // }
+        // stage ('Pushing DB Into AWS ERC') {
+        //     steps {
+        //         script {
+        //             sh """
+        //                 aws ecr get-login-password --region ${params.AWS_REGION} | sudo docker login --username AWS --password-stdin ${ECR_REPOSITORY_URI}
+        //                 sudo docker push ${env.ECR_REPOSITORY_URI}/${env.DB_ECR_REPOSITORY_NAME}:${params.REDIS_IMAGE_TAG}
+        //             """ 
+        //         }
+        //     }
+        // }
+        // stage ('Deploying') {
+        //     steps {
+        //         dir("${WORKSPACE}/tcc-weather-app") {
+        //             script {
+        //                 sh """
+        //                 cd ${WORKSPACE}/tcc-weather-app/jenkins/weather-app
+        //                 sudo docker-compose up -d
+        //                 slee 60
+        //                 sudo docker ps
+        //                 """
+        //             }
+        //         }
+        //     }
+        // }
+    }
+    // post {
+    //     success {
+    //         slackSend color: '#2EB67D',
+    //         channel: 'testing-tia', 
+    //         message: "*sixfure Project Build Status*" +
+    //         "\n Project Name: sixfure" +
+    //         "\n Job Name: ${env.JOB_NAME}" +
+    //         "\n Build number: ${currentBuild.displayName}" +
+    //         "\n Build Status : *SUCCESS*" +
+    //         "\n Build url : ${env.BUILD_URL}"
+    //     }
+    //     failure {
+    //         slackSend color: '#E01E5A',
+    //         channel: 'testing-tia',  
+    //         message: "*sixfure Project Build Status*" +
+    //         "\n Project Name: sixfure" +
+    //         "\n Job Name: ${env.JOB_NAME}" +
+    //         "\n Build number: ${currentBuild.displayName}" +
+    //         "\n Build Status : *FAILED*" +
+    //         "\n Action : Please check the console output to fix this job IMMEDIATELY" +
+    //         "\n Build url : ${env.BUILD_URL}"
+    //     }
+    //     unstable {
+    //         slackSend color: '#ECB22E',
+    //         channel: 'testing-tia', 
+    //         message: "*sixfure Project Build Status*" +
+    //         "\n Project Name: sixfure" +
+    //         "\n Job Name: ${env.JOB_NAME}" +
+    //         "\n Build number: ${currentBuild.displayName}" +
+    //         "\n Build Status : *UNSTABLE*" +
+    //         "\n Action : Please check the console output to fix this job IMMEDIATELY" +
+    //         "\n Build url : ${env.BUILD_URL}"
+    //     }   
+    // }
+}
+
+
+def sanityChecks() {
+    if (params.BRANCH_NAME.isEmpty()) {
+        println('Parameter BRANCH_NAME is not set')
+        sh """
+            exit 2
+        """
+    }
+    if (params.UI_IMAGE_TAG.isEmpty()) {
+        println('Parameter UI_IMAGE_TAG is not set')
+        sh """
+            exit 2
+        """
+    }
+    if (params.AUTH_IMAGE_TAG.isEmpty()) {
+        println('Parameter AUTH_IMAGE_TAG is not set')
+        sh """
+            exit 2
+        """
+    }
+    if (params.WEATHER_IMAGE_TAG.isEmpty()) {
+        println('Parameter WEATHER_IMAGE_TAG is not set')
+        sh """
+            exit 2
+        """
+    }
+    if (params.REDIS_IMAGE_TAG.isEmpty()) {
+        println('Parameter REDIS_IMAGE_TAG is not set')
+        sh """
+            exit 2
+        """
+    }
+    if (params.DB_IMAGE_TAG.isEmpty()) {
+        println('Parameter DB_IMAGE_TAG is not set')
+        sh """
+            exit 2
+        """
+    }
+}
+
+// def aws_credentials() {
+// sh """    
+// mkdir -p $HOME/.aws || true
+
+// cat <<EOF >  $HOME/.aws/credentials
+// [default]
+// aws_access_key_id = ${AWS_ACCESS_KEY_ID}
+// aws_secret_access_key = ${AWS_SECRET_ACCESS_KEY}
+// EOF
+
+// cat <<EOF >  $HOME/.aws/config
+// [default]
+// region = ${params.AWS_REGION}
+// output = json
+// EOF
+
+// aws s3 ls
+// """
+// }
+
+def aws_credentials() {
+sh """    
+mkdir -p ~/.aws || true
+
+cat <<EOF > ~/.aws/credentials
+[default]
+aws_access_key_id = ${AWS_ACCESS_KEY_ID}
+aws_secret_access_key = ${AWS_SECRET_ACCESS_KEY}
+EOF
+
+cat <<EOF > ~/.aws/config
+[default]
+region = ${params.AWS_REGION}
+output = json
+EOF
+
+aws s3 ls
+"""
+}
