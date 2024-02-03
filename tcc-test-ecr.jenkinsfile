@@ -6,11 +6,11 @@ pipeline {
     // }
     environment {
         ECR_REPOSITORY_URI = "${params.AWS_ACCOUNT_NUMBER}.dkr.ecr.${params.AWS_REGION}.amazonaws.com"
-        UI_ECR_IMAGE_REPOSITORY_NAME = "sixfure-ui"
-        AUTH_ECR_REPOSITORY_NAME = "sixfure-auth"
-        WEATHER_ECR_REPOSITORY_NAME = "sixfure-weather"
-        REDIS_ECR_REPOSITORY_NAME = "sixfure-redis"
-        DB_ECR_REPOSITORY_NAME = "sixfure-db"
+        UI_ECR_IMAGE_REPOSITORY_NAME = "tcc-weather-app-ui"
+        AUTH_ECR_REPOSITORY_NAME = "tcc-weather-app-auth"
+        WEATHER_ECR_REPOSITORY_NAME = "tcc-weather-app-weather"
+        REDIS_ECR_REPOSITORY_NAME = "tcc-weather-app-redis"
+        DB_ECR_REPOSITORY_NAME = "tcc-weather-app-db"
     }
     options {
         buildDiscarder(logRotator(numToKeepStr: '2'))
@@ -270,40 +270,40 @@ pipeline {
         //     }
         // }
     }
-    // post {
-    //     success {
-    //         slackSend color: '#2EB67D',
-    //         channel: 'testing-tia', 
-    //         message: "*sixfure Project Build Status*" +
-    //         "\n Project Name: sixfure" +
-    //         "\n Job Name: ${env.JOB_NAME}" +
-    //         "\n Build number: ${currentBuild.displayName}" +
-    //         "\n Build Status : *SUCCESS*" +
-    //         "\n Build url : ${env.BUILD_URL}"
-    //     }
-    //     failure {
-    //         slackSend color: '#E01E5A',
-    //         channel: 'testing-tia',  
-    //         message: "*sixfure Project Build Status*" +
-    //         "\n Project Name: sixfure" +
-    //         "\n Job Name: ${env.JOB_NAME}" +
-    //         "\n Build number: ${currentBuild.displayName}" +
-    //         "\n Build Status : *FAILED*" +
-    //         "\n Action : Please check the console output to fix this job IMMEDIATELY" +
-    //         "\n Build url : ${env.BUILD_URL}"
-    //     }
-    //     unstable {
-    //         slackSend color: '#ECB22E',
-    //         channel: 'testing-tia', 
-    //         message: "*sixfure Project Build Status*" +
-    //         "\n Project Name: sixfure" +
-    //         "\n Job Name: ${env.JOB_NAME}" +
-    //         "\n Build number: ${currentBuild.displayName}" +
-    //         "\n Build Status : *UNSTABLE*" +
-    //         "\n Action : Please check the console output to fix this job IMMEDIATELY" +
-    //         "\n Build url : ${env.BUILD_URL}"
-    //     }   
-    // }
+    post {
+        success {
+            slackSend color: '#2EB67D',
+            channel: 'tcc-lab', 
+            message: "*tcc-weather-app Project Build Status*" +
+            "\n Project Name: tcc-weather-app" +
+            "\n Job Name: ${env.JOB_NAME}" +
+            "\n Build number: ${currentBuild.displayName}" +
+            "\n Build Status : *SUCCESS*" +
+            "\n Build url : ${env.BUILD_URL}"
+        }
+        failure {
+            slackSend color: '#E01E5A',
+            channel: 'tcc-lab',  
+            message: "*tcc-weather-app Project Build Status*" +
+            "\n Project Name: tcc-weather-app" +
+            "\n Job Name: ${env.JOB_NAME}" +
+            "\n Build number: ${currentBuild.displayName}" +
+            "\n Build Status : *FAILED*" +
+            "\n Action : Please check the console output to fix this job IMMEDIATELY" +
+            "\n Build url : ${env.BUILD_URL}"
+        }
+        unstable {
+            slackSend color: '#ECB22E',
+            channel: 'tcc-lab', 
+            message: "*tcc-weather-app Project Build Status*" +
+            "\n Project Name: tcc-weather-app" +
+            "\n Job Name: ${env.JOB_NAME}" +
+            "\n Build number: ${currentBuild.displayName}" +
+            "\n Build Status : *UNSTABLE*" +
+            "\n Action : Please check the console output to fix this job IMMEDIATELY" +
+            "\n Build url : ${env.BUILD_URL}"
+        }   
+    }
 }
 
 
