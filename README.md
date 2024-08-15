@@ -2,9 +2,11 @@ This is my hands on repository for practice.
 It's always good to stay up to date with the skills and knowledge. 
 
 ![](https://1drv.ms/i/s!Ag3UhH0IOlgnhOw6r1Wd2WORprZzCQ?e=L9LbxH)
+
 ###############################################################
 ##  jenkins master/agent config
 ###############################################################
+
 **Let us learn more about Jenkins master and slave:**
 
 **Jenkins Master**
@@ -16,6 +18,7 @@ Your main Jenkins server is the Master. The Master’s job is to handle:
 - Monitor the slaves (possibly taking them online and offline as required).
 - Recording and presenting the build results.
 - A Master instance of Jenkins can also execute build jobs directly.
+
 **Jenkins Slave**
 
 A Slave is a Java executable that runs on a remote machine. Following are the characteristics of Jenkins Slaves:
